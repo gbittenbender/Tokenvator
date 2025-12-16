@@ -14,6 +14,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      
+      - name: Install .NET Framework 4.5 Developer Pack
+        run: |
+            Invoke-WebRequest -Uri https://download.microsoft.com/download/2/7/D/27DAB2A2-581C-4D1F-B3B8-2CFE3A4F8BB2/NDP45-DevPack-KB2872776-ENU.exe -OutFile devpack.ex
+            Start-Process .\devpack.exe -ArgumentList "/quiet" -Wait
+            Remove-Item .\devpack.exe
+        shell: powershell
+
 
       - name: Setup NuGet CLI
         uses: NuGet/setup-nuget@v1
@@ -27,7 +35,7 @@ jobs:
 
       - name: Build Tokenvator (Release)
         run: |
-          msbuild Tokenvator.sln /p:Configuration=Release-Net45 /p:Platform="x64"
+          msbuild Tokenvator.csproj /p:Configuration=Release-Net45 /p:Platform="x64"
 
       - name: 📁 Upload build artifacts
         uses: actions/upload-artifact@v4
