@@ -1,0 +1,62 @@
+name: Build Tokenvator
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 🧾 Checkout repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup NuGet CLI
+        uses: NuGet/setup-nuget@v1
+
+      - name: Restore NuGet packages
+        run: |
+          nuget restore Tokenvator.sln
+
+      - name: Install MSBuild
+        uses: microsoft/setup-msbuild@v1
+
+      - name: Build Tokenvator (Release)
+        run: |
+          msbuild Tokenvator.sln /p:Configuration=Release-Net45 /p:Platform="x64"
+
+      - name: 📁 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokenvator-release
+          path: |
+            Tokenvator/Tokenvator/bin/Release-Net45/
+            
+      - name: 🔐 Compress and Base64-encode Koh.exe
+        shell: powershell
+        run: |
+          $exePath = "Koh\\bin\\Release\\Koh.exe"
+          $b64Out = "Koh\\bin\\Release\\KohB64.txt"
+
+          $bytes = [System.IO.File]::ReadAllBytes($exePath)
+          $outStream = New-Object System.IO.MemoryStream
+          $gzipStream = New-Object System.IO.Compression.GzipStream($outStream, [System.IO.Compression.CompressionMode]::Compress)
+
+          $gzipStream.Write($bytes, 0, $bytes.Length)
+          $gzipStream.Close()
+          $outStream.Close()
+
+          $outBytes = $outStream.ToArray()
+          $b64Zipped = [System.Convert]::ToBase64String($outBytes)
+
+          Set-Content -Path $b64Out -Value $b64Zipped -Encoding ASCII -NoNewline
+
+      - name: ☁️ Upload base64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: koh-b64
+          path: Koh/bin/Release/KohB64.txt
